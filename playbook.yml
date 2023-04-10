@@ -8,6 +8,28 @@
       when: inventory_hostname == "node1"
       ansible.builtin.meta: end_host
 
+    - name: Create snapshots for all PVCs in all namespaces using Longhorn
+      become: no
+      ansible.builtin.shell: |
+        for namespace in $(kubectl get namespaces -o jsonpath='{.items[*].metadata.name}')
+        do
+          for pvc in $(kubectl get pvc --namespace $namespace -o json | jq -r '.items[].metadata.name')
+          do
+            kubectl apply -f - <<EOF
+            apiVersion: snapshot.storage.k8s.io/v1beta1
+            kind: VolumeSnapshot
+            metadata:
+              name: ${pvc}-snapshot-$(date +"%Y%m%d%H%M%S")
+              namespace: $namespace
+            spec:
+              volumeSnapshotClassName: longhorn
+              source:
+                persistentVolumeClaimName: $pvc
+            EOF
+          done
+        done
+      delegate_to: node1
+
     - name: Drain node
       ansible.builtin.shell: kubectl drain {{ inventory_hostname }} --ignore-daemonsets --delete-emptydir-data
       become: no
@@ -45,7 +67,7 @@
       delegate_to: node1
 
   vars:
-    ansible_user: root
+    ansible_user: your_user
     ansible_ssh_private_key_file: "~/.ssh/id_rsa"
 
 - name: Drain and reboot Node1 after Nodes 2-6 have completed
