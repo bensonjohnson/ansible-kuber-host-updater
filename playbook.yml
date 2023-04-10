@@ -1,0 +1,91 @@
+---
+- name: Drain Nodes using master node1 as kubectl
+  hosts: nodes[1:7]
+  gather_facts: no
+  serial: 1
+  tasks:
+    - name: Skip Node1 in the first iteration
+      when: inventory_hostname == "node1"
+      ansible.builtin.meta: end_host
+
+    - name: Drain node
+      ansible.builtin.shell: kubectl drain {{ inventory_hostname }} --ignore-daemonsets --delete-emptydir-data
+      become: no
+      register: drain_output
+      delegate_to: node1
+
+    - name: Display drain output
+      ansible.builtin.debug:
+        var: drain_output.stdout_lines
+
+    - name: Update Ubuntu
+      become: yes
+      ansible.builtin.apt:
+        update_cache: yes
+        upgrade: dist
+      register: apt_update_output
+
+    - name: Display apt update output
+      ansible.builtin.debug:
+        var: apt_update_output.stdout_lines
+
+    - name: Reboot the node
+      become: yes
+      ansible.builtin.reboot:
+        reboot_timeout: 300
+
+    - name: Wait for node to come back online
+      ansible.builtin.wait_for_connection:
+        delay: 30
+        timeout: 300
+
+    - name: Uncordon the node
+      ansible.builtin.shell: kubectl uncordon {{ inventory_hostname }}
+      become: no
+      delegate_to: node1
+
+  vars:
+    ansible_user: root
+    ansible_ssh_private_key_file: "~/.ssh/id_rsa"
+
+- name: Drain and reboot Node1 after Nodes 2-6 have completed
+  hosts: node1
+  gather_facts: no
+  tasks:
+    - name: Drain Node1
+      ansible.builtin.shell: kubectl drain {{ inventory_hostname }} --ignore-daemonsets --delete-emptydir-data
+      become: no
+      register: drain_output
+
+    - name: Display drain output
+      ansible.builtin.debug:
+        var: drain_output.stdout_lines
+
+    - name: Update Ubuntu
+      become: yes
+      ansible.builtin.apt:
+        update_cache: yes
+        upgrade: dist
+      register: apt_update_output
+
+    - name: Display apt update output
+      ansible.builtin.debug:
+        var: apt_update_output.stdout_lines
+
+    - name: Reboot Node1
+      become: yes
+      ansible.builtin.reboot:
+        reboot_timeout: 300
+
+    - name: Wait for Node1 to come back online
+      ansible.builtin.wait_for_connection:
+        delay: 30
+        timeout: 300
+
+    - name: Uncordon Node1
+      ansible.builtin.shell: kubectl uncordon {{ inventory_hostname }}
+      become: no
+
+  vars:
+    ansible_user: root
+    ansible_ssh_private_key_file: "~/.ssh/id_rsa"
