@@ -32,12 +32,12 @@
     - name: Reboot the node
       become: yes
       ansible.builtin.reboot:
-        reboot_timeout: 500
+        reboot_timeout: 600
 
     - name: Wait for node to come back online
       ansible.builtin.wait_for_connection:
         delay: 30
-        timeout: 500
+        timeout: 600
 
     - name: Uncordon the node
       ansible.builtin.shell: kubectl uncordon {{ inventory_hostname }}
