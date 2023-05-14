@@ -25,9 +25,19 @@
         upgrade: dist
       register: apt_update_output
 
+    - name: Autoremove packages
+      become: yes
+      ansible.builtin.apt:
+        autoremove: yes
+      register: apt_autoremove_output
+
     - name: Display apt update output
       ansible.builtin.debug:
         var: apt_update_output.stdout_lines
+
+    - name: Display apt autoremove output
+      ansible.builtin.debug:
+        var: apt_autoremove_output.stdout_lines
 
     - name: Reboot the node
       become: yes
@@ -68,9 +78,19 @@
         upgrade: dist
       register: apt_update_output
 
+    - name: Autoremove packages
+      become: yes
+      ansible.builtin.apt:
+        autoremove: yes
+      register: apt_autoremove_output
+
     - name: Display apt update output
       ansible.builtin.debug:
         var: apt_update_output.stdout_lines
+
+    - name: Display apt autoremove output
+      ansible.builtin.debug:
+        var: apt_autoremove_output.stdout_lines
 
     - name: Reboot Node1
       become: yes
